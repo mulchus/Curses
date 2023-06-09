@@ -32,18 +32,18 @@ def draw(canvas):
 
     rocket_row = max_row / 2
     rocket_column = max_column / 2
-    rocket_frame = []
+    rocket_frames = []
     with open("Animations/rocket_frame_1.txt", "r") as my_file:
-        rocket_frame.append(my_file.read())
+        rocket_frames.append(my_file.read())
     with open("Animations/rocket_frame_2.txt", "r") as my_file:
-        rocket_frame.append(my_file.read())
+        rocket_frames.append(my_file.read())
 
     coroutines.append(
         animate_spaceship(
             canvas,
             rocket_row,
             rocket_column,
-            rocket_frame,
+            rocket_frames,
         )
     )
 
@@ -96,10 +96,10 @@ def draw(canvas):
                             canvas,
                             rocket_row,
                             rocket_column,
-                            rocket_frame
+                            rocket_frames,
                         )
                     )
-            canvas.refresh()
+                    coroutines[-1].send(None)
         time.sleep(TIC_TIMEOUT)
 
 
@@ -131,7 +131,6 @@ async def animate_spaceship(canvas, row, column, rocket_frames):
         round(column),
         rocket,
     )
-
     await asyncio.sleep(0)
 
     curses_tools.draw_frame(
@@ -149,7 +148,6 @@ async def animate_spaceship(canvas, row, column, rocket_frames):
         round(column),
         rocket,
     )
-
     await asyncio.sleep(0)
 
     curses_tools.draw_frame(
