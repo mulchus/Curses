@@ -18,7 +18,14 @@ pip install -r requirements.txt
 python main.py
 ```
 
+
+## Управление
+Ракета управляется стрелками клавиатуры.  
+Выстрел производится клавишей "пробел".  
+
+
 ## Пример работы скрипта
+![ship](https://github.com/mulchus/Curses/assets/111083714/9cbfa5a6-a0f2-4a0d-8335-efe40223ff40)
 
 
 ## Цели проекта
