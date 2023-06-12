@@ -2,7 +2,6 @@ import time
 import curses
 import asyncio
 import random
-import curses_tools
 
 from itertools import cycle
 
@@ -11,9 +10,22 @@ TIC_TIMEOUT = 0.1
 FRAME_THICKNESS = 1
 SHIP_HEIGHT = 9
 SHIP_WIDTH = 5
+SPACE_KEY_CODE = 32
+LEFT_KEY_CODE = 260
+RIGHT_KEY_CODE = 261
+UP_KEY_CODE = 259
+DOWN_KEY_CODE = 258
+ROCKET_ROW = 0
+ROCKET_COLUMN = 0
+PRESSED_KEY_CODE = 0
+PRESSED_KEY = ''
 
 
 def draw(canvas):
+    global ROCKET_ROW
+    global ROCKET_COLUMN
+    global PRESSED_KEY_CODE
+    global PRESSED_KEY
     canvas.border(0)
     canvas.nodelay(True)
     rows, columns = canvas.getmaxyx()
@@ -30,133 +42,86 @@ def draw(canvas):
             )
         )
 
-    rocket_row = max_row / 2
-    rocket_column = max_column / 2
-    rocket_frames = []
-    with open("Animations/rocket_frame_1.txt", "r") as my_file:
-        rocket_frames.append(my_file.read())
-    with open("Animations/rocket_frame_2.txt", "r") as my_file:
-        rocket_frames.append(my_file.read())
-
     coroutines.append(
         animate_spaceship(
             canvas,
-            rocket_row,
-            rocket_column,
-            rocket_frames,
+            max_row,
+            max_column,
         )
     )
 
-    rows_direction = 0
-    columns_direction = 0
-    space_pressed = False
-    fire_coroutine = 0
-
     while True:
-        try:
-            rows_direction, columns_direction, space_pressed = curses_tools.read_controls(canvas)
+        PRESSED_KEY_CODE = canvas.getch()  # слабая реакция ракеты на клавиатуру, причина не понятна
+                                           # но перемещение внутрь корутины ракеты ничего не решает
+        if PRESSED_KEY_CODE == SPACE_KEY_CODE:
+            fire_coroutine = fire(canvas, ROCKET_ROW, ROCKET_COLUMN + 2, -1, 0)
+            coroutines.append(fire_coroutine)
 
-            if rows_direction:
-                if 0 < (rocket_row + rows_direction) <= (max_row - SHIP_HEIGHT):
-                    rocket_row += rows_direction
-                elif (rocket_row + rows_direction) <= 0:
-                    rocket_row = 1
-                elif (rocket_row + rows_direction) > (max_row - SHIP_HEIGHT):
-                    rocket_row = max_row - SHIP_HEIGHT
-                rows_direction = 0
-
-            if columns_direction:
-                if 0 < (rocket_column + columns_direction) <= (max_column - SHIP_WIDTH):
-                    rocket_column += columns_direction
-                elif (rocket_column + columns_direction) <= 0:
-                    rocket_column = 1
-                elif (rocket_column + columns_direction) > (max_column - SHIP_WIDTH):
-                    rocket_column = max_column - SHIP_WIDTH
-                columns_direction = 0
-
-            if space_pressed:
-                fire_coroutine = fire(canvas, rocket_row, rocket_column + 2, -1, 0)
-                coroutines.append(fire_coroutine)
-                space_pressed = False
-
-        except StopIteration:
-            pass
-
-        # for coroutine in coroutines:
-        for _ in range(len(coroutines.copy())):
-            coroutine = coroutines.copy()[random.randint(0, len(coroutines.copy()) - 1)]
-
+        for coroutine in coroutines.copy():
             try:
                 coroutine.send(None)
             except StopIteration:
                 coroutines.remove(coroutine)
-                if coroutine.__name__ == 'animate_spaceship':
-                    coroutines.append(
-                        animate_spaceship(
-                            canvas,
-                            rocket_row,
-                            rocket_column,
-                            rocket_frames,
-                        )
-                    )
-                    coroutines[-1].send(None)
+            canvas.refresh()
         time.sleep(TIC_TIMEOUT)
 
 
 async def blink(canvas, row, column, symbol):
     while True:
         canvas.addstr(row, column, symbol, curses.A_DIM)
-        for _ in range(0, 20):  # пауза в 2 сек
+        for _ in range(0, random.randint(0, 20)):  # пауза в max 2 сек
             await asyncio.sleep(0)
         canvas.addstr(row, column, symbol)
-        for _ in range(0, 3):  # пауза в 0,3 сек
+        for _ in range(0, random.randint(0, 3)):  # пауза в max 0,3 сек
             await asyncio.sleep(0)
         canvas.addstr(row, column, symbol, curses.A_BOLD)
-        for _ in range(0, 5):  # пауза в 0,5 сек
+        for _ in range(0, random.randint(0, 5)):  # пауза в max 0,5 сек
             await asyncio.sleep(0)
         canvas.addstr(row, column, symbol)
-        for _ in range(0, 3):  # пауза в 0,3 сек
+        for _ in range(0, random.randint(0, 3)):  # пауза в max 0,3 сек
             await asyncio.sleep(0)
 
 
-async def animate_spaceship(canvas, row, column, rocket_frames):
-    """Display animation of rocket, direction can be specified."""
-
+async def animate_spaceship(canvas, max_row, max_column):
+    global ROCKET_ROW
+    global ROCKET_COLUMN
+    global PRESSED_KEY_CODE
+    ROCKET_ROW = max_row / 2
+    ROCKET_COLUMN = max_column / 2
+    rocket_frames = []
+    with open("Animations/rocket_frame_1.txt", "r") as my_file:
+        rocket_frames.append(my_file.read())
+    with open("Animations/rocket_frame_2.txt", "r") as my_file:
+        rocket_frames.append(my_file.read())
     iterator = cycle(rocket_frames)
 
-    rocket = next(iterator)
-    curses_tools.draw_frame(
-        canvas,
-        round(row),
-        round(column),
-        rocket,
-    )
-    await asyncio.sleep(0)
+    while True:
+        if PRESSED_KEY_CODE == UP_KEY_CODE:
+            ROCKET_ROW = max(ROCKET_ROW - 1, 1)
+        elif PRESSED_KEY_CODE == DOWN_KEY_CODE:
+            ROCKET_ROW = min(ROCKET_ROW + 1, max_row - SHIP_HEIGHT)
+        elif PRESSED_KEY_CODE == LEFT_KEY_CODE:
+            ROCKET_COLUMN = max(ROCKET_COLUMN - 1, 1)
+        elif PRESSED_KEY_CODE == RIGHT_KEY_CODE:
+            ROCKET_COLUMN = min(ROCKET_COLUMN + 1, max_column - SHIP_WIDTH)
 
-    curses_tools.draw_frame(
-        canvas,
-        round(row),
-        round(column),
-        rocket,
-        negative=True
-    )
+        for _ in range(2):
+            rocket = next(iterator)
+            draw_frame(
+                canvas,
+                round(ROCKET_ROW),
+                round(ROCKET_COLUMN),
+                rocket,
+            )
+            await asyncio.sleep(0)
 
-    rocket = next(iterator)
-    curses_tools.draw_frame(
-        canvas,
-        round(row),
-        round(column),
-        rocket,
-    )
-    await asyncio.sleep(0)
-
-    curses_tools.draw_frame(
-        canvas,
-        round(row),
-        round(column),
-        rocket,
-        negative=True
-    )
+            draw_frame(
+                canvas,
+                round(ROCKET_ROW),
+                round(ROCKET_COLUMN),
+                rocket,
+                negative=True
+            )
 
 
 async def fire(canvas, row, column, rows_speed=-0.3, columns_speed=0):
@@ -184,6 +149,38 @@ async def fire(canvas, row, column, rows_speed=-0.3, columns_speed=0):
         canvas.addstr(round(row), round(column), ' ')
         row += rows_speed
         column += columns_speed
+
+
+def draw_frame(canvas, start_row, start_column, text, negative=False):
+    """Draw multiline text fragment on canvas, erase text instead of drawing if negative=True is specified."""
+
+    rows_number, columns_number = canvas.getmaxyx()
+
+    for row, line in enumerate(text.splitlines(), round(start_row)):
+        if row < 0:
+            continue
+
+        if row >= rows_number:
+            break
+
+        for column, symbol in enumerate(line, round(start_column)):
+            if column < 0:
+                continue
+
+            if column >= columns_number:
+                break
+
+            if symbol == ' ':
+                continue
+
+            # Check that current position it is not in a lower right corner of the window
+            # Curses will raise exception in that case. Don`t ask why…
+            # https://docs.python.org/3/library/curses.html#curses.window.addch
+            if row == rows_number - 1 and column == columns_number - 1:
+                continue
+
+            symbol = symbol if not negative else ' '
+            canvas.addch(row, column, symbol)
 
 
 if __name__ == '__main__':
