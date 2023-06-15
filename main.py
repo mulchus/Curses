@@ -22,8 +22,8 @@ def draw(canvas):
     canvas.nodelay(True)
     rows, columns = canvas.getmaxyx()
     max_row, max_column = rows - FRAME_THICKNESS, columns - FRAME_THICKNESS
-    rocket_row = max_row / 2
-    rocket_column = max_column / 2
+    rocket_row = int(max_row / 2)
+    rocket_column = int(max_column / 2)
     rocket_frames = []
     with open("Animations/rocket_frame_1.txt", "r") as my_file:
         rocket_frames.append(my_file.read())
@@ -88,36 +88,38 @@ async def blink(canvas, row, column, symbol, offset_tics):
 
 
 async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_column, rocket_frames):
-    iterator = cycle(rocket_frames)
-    while True:
+
+    def update_coordinates(rocket_row_, rocket_column_):
         # Все равно слабая реакция ракеты на клавиатуру, причина - звезды. Без await ракета движется нормально
         rows_direction, columns_direction, _ = read_controls(canvas)
         if rows_direction < 0:
-            rocket_row = max(rocket_row + rows_direction, 1)
+            rocket_row_ = max(rocket_row_ + rows_direction, 1)
         elif rows_direction > 0:
-            rocket_row = min(rocket_row + rows_direction, max_row - SHIP_HEIGHT)
+            rocket_row_ = min(rocket_row_ + rows_direction, max_row - SHIP_HEIGHT)
         elif columns_direction < 0:
-            rocket_column = max(rocket_column + columns_direction, 1)
+            rocket_column_ = max(rocket_column_ + columns_direction, 1)
         elif columns_direction > 0:
-            rocket_column = min(rocket_column + columns_direction, max_column - SHIP_WIDTH)
+            rocket_column_ = min(rocket_column_ + columns_direction, max_column - SHIP_WIDTH)
+        return rocket_row_, rocket_column_
 
-        for _ in range(2):
-            rocket = next(iterator)
-            draw_frame(
-                canvas,
-                round(rocket_row),
-                round(rocket_column),
-                rocket,
-            )
-            await asyncio.sleep(0)
+    for rocket in cycle(rocket_frames):
+        rocket_row, rocket_column = update_coordinates(rocket_row, rocket_column)
+        draw_frame(
+            canvas,
+            round(rocket_row),
+            round(rocket_column),
+            rocket,
+        )
 
-            draw_frame(
-                canvas,
-                round(rocket_row),
-                round(rocket_column),
-                rocket,
-                negative=True
-            )
+        await asyncio.sleep(0)
+
+        draw_frame(
+            canvas,
+            round(rocket_row),
+            round(rocket_column),
+            rocket,
+            negative=True
+        )
 
 
 async def fire(canvas, row, column, rows_speed=-0.3, columns_speed=0):
@@ -176,22 +178,17 @@ def read_controls(canvas):
     """Read keys pressed and returns tuple witl controls state."""
     rows_direction = columns_direction = 0
     space_pressed = False
-    while True:
-        pressed_key_code = canvas.getch()
-
-        if pressed_key_code == -1:
-            # https://docs.python.org/3/library/curses.html#curses.window.getch
-            break
-        if pressed_key_code == UP_KEY_CODE:
-            rows_direction = -1
-        if pressed_key_code == DOWN_KEY_CODE:
-            rows_direction = 1
-        if pressed_key_code == RIGHT_KEY_CODE:
-            columns_direction = 1
-        if pressed_key_code == LEFT_KEY_CODE:
-            columns_direction = -1
-        if pressed_key_code == SPACE_KEY_CODE:
-            space_pressed = True
+    pressed_key_code = canvas.getch()
+    if pressed_key_code == UP_KEY_CODE:
+        rows_direction = -1
+    elif pressed_key_code == DOWN_KEY_CODE:
+        rows_direction = 1
+    elif pressed_key_code == RIGHT_KEY_CODE:
+        columns_direction = 1
+    elif pressed_key_code == LEFT_KEY_CODE:
+        columns_direction = -1
+    elif pressed_key_code == SPACE_KEY_CODE:
+        space_pressed = True
     return rows_direction, columns_direction, space_pressed
 
 
