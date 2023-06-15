@@ -51,15 +51,11 @@ def draw(canvas):
             rocket_row,
             rocket_column,
             rocket_frames,
+            coroutines,
         )
     )
 
     while True:
-        _, _, space_pressed = read_controls(canvas)
-        if space_pressed:
-            fire_coroutine = fire(canvas, rocket_row, rocket_column + 2, -1, 0)
-            coroutines.append(fire_coroutine)
-
         for coroutine in coroutines.copy():
             try:
                 coroutine.send(None)
@@ -71,27 +67,26 @@ def draw(canvas):
 
 async def blink(canvas, row, column, symbol, offset_tics):
     while True:
-        for _ in range(0, offset_tics):  # пауза в offset_tics*0.1 сек
+        for _ in range(0, offset_tics):  # пауза в offset_tics тактов
             await asyncio.sleep(0)
         canvas.addstr(row, column, symbol, curses.A_DIM)
-        for _ in range(0, 20):  # пауза в 2 сек
+        for _ in range(0, 20):  # пауза в 20 тактов
             await asyncio.sleep(0)
         canvas.addstr(row, column, symbol)
-        for _ in range(0, 3):  # пауза в 0.3 сек
+        for _ in range(0, 3):  # пауза в 3 такта
             await asyncio.sleep(0)
         canvas.addstr(row, column, symbol, curses.A_BOLD)
-        for _ in range(0, 5):  # пауза в 0.5 сек
+        for _ in range(0, 5):  # пауза в 5 такта
             await asyncio.sleep(0)
         canvas.addstr(row, column, symbol)
-        for _ in range(0, 3):  # пауза в 0.3 сек
+        for _ in range(0, 3):  # пауза в 3 такта
             await asyncio.sleep(0)
 
 
-async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_column, rocket_frames):
+async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_column, rocket_frames, coroutines):
 
     def update_coordinates(rocket_row_, rocket_column_):
-        # Все равно слабая реакция ракеты на клавиатуру, причина - звезды. Без await ракета движется нормально
-        rows_direction, columns_direction, _ = read_controls(canvas)
+        rows_direction, columns_direction, space_pressed_ = read_controls(canvas)
         if rows_direction < 0:
             rocket_row_ = max(rocket_row_ + rows_direction, 1)
         elif rows_direction > 0:
@@ -100,10 +95,15 @@ async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_colu
             rocket_column_ = max(rocket_column_ + columns_direction, 1)
         elif columns_direction > 0:
             rocket_column_ = min(rocket_column_ + columns_direction, max_column - SHIP_WIDTH)
-        return rocket_row_, rocket_column_
+        return rocket_row_, rocket_column_, space_pressed_
 
     for rocket in cycle(rocket_frames):
-        rocket_row, rocket_column = update_coordinates(rocket_row, rocket_column)
+        rocket_row, rocket_column, space_pressed = update_coordinates(rocket_row, rocket_column)
+
+        if space_pressed:
+            fire_coroutine = fire(canvas, rocket_row, rocket_column + 2, -1, 0)
+            coroutines.append(fire_coroutine)
+
         draw_frame(
             canvas,
             round(rocket_row),
