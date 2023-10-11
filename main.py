@@ -18,17 +18,21 @@ DOWN_KEY_CODE = 258
 
 
 def draw(canvas):
-    canvas.border(0)
+    # canvas.border(0)
     canvas.nodelay(True)
     rows, columns = canvas.getmaxyx()
     max_row, max_column = rows - FRAME_THICKNESS, columns - FRAME_THICKNESS
     rocket_row = int(max_row / 2)
     rocket_column = int(max_column / 2)
     rocket_frames = []
-    with open("Animations/rocket_frame_1.txt", "r") as my_file:
+    with open('Animations/rocket_frame_1.txt', 'r') as my_file:
         rocket_frames.append(my_file.read())
-    with open("Animations/rocket_frame_2.txt", "r") as my_file:
+    with open('Animations/rocket_frame_2.txt', 'r') as my_file:
         rocket_frames.append(my_file.read())
+    with open('Animations/duck.txt', 'r') as garbage_file:
+        frame = garbage_file.read()
+
+    garbage_coroutine = fly_garbage(canvas, column=10, garbage_frame=frame)
 
     numbers_of_stars = int(max_row * max_column / 40)
     coroutines = []
@@ -55,6 +59,8 @@ def draw(canvas):
         )
     )
 
+    coroutines.append(garbage_coroutine)
+
     while True:
         for coroutine in coroutines.copy():
             try:
@@ -63,6 +69,22 @@ def draw(canvas):
                 coroutines.remove(coroutine)
         canvas.refresh()
         time.sleep(TIC_TIMEOUT)
+
+
+async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
+    """Animate garbage, flying from top to bottom. Сolumn position will stay same, as specified on start."""
+    rows_number, columns_number = canvas.getmaxyx()
+
+    column = max(column, 0)
+    column = min(column, columns_number - 1)
+
+    row = 0
+
+    while row < rows_number:
+        draw_frame(canvas, row, column, garbage_frame)
+        await asyncio.sleep(0)
+        draw_frame(canvas, row, column, garbage_frame, negative=True)
+        row += speed
 
 
 async def blink(canvas, row, column, symbol, offset_tics):
