@@ -3,6 +3,7 @@ import curses
 import asyncio
 import random
 
+from pathlib import Path
 from itertools import cycle
 
 
@@ -15,6 +16,7 @@ LEFT_KEY_CODE = 260
 RIGHT_KEY_CODE = 261
 UP_KEY_CODE = 259
 DOWN_KEY_CODE = 258
+BASE_DIR = Path(__file__).resolve().parent / 'Animations'
 
 
 def draw(canvas):
@@ -25,16 +27,21 @@ def draw(canvas):
     rocket_row = int(max_row / 2)
     rocket_column = int(max_column / 2)
     rocket_frames = []
+    garbage_files = ('duck.txt', 'hubble.txt', 'lamp.txt', 'trash_large.txt', 'trash_small.txt', 'trash_xl.txt')
+    garbage_frames = []
     with open('Animations/rocket_frame_1.txt', 'r') as my_file:
         rocket_frames.append(my_file.read())
     with open('Animations/rocket_frame_2.txt', 'r') as my_file:
         rocket_frames.append(my_file.read())
-    with open('Animations/duck.txt', 'r') as garbage_file:
-        frame = garbage_file.read()
-
-    garbage_coroutine = fly_garbage(canvas, column=10, garbage_frame=frame)
+    for garbage_filename in garbage_files:
+        with open(Path(BASE_DIR, garbage_filename), 'r') as garbage_file:
+            garbage_frames.append(garbage_file.read())
+    print(len(garbage_frames))
+    # garbage_coroutine = fly_garbage(canvas, column=10, garbage_frame=frame)
 
     numbers_of_stars = int(max_row * max_column / 40)
+    numbers_of_garbage = int(max_row * max_column / 400)
+
     coroutines = []
     for _ in range(numbers_of_stars):
         coroutines.append(
@@ -44,6 +51,16 @@ def draw(canvas):
                 random.randint(FRAME_THICKNESS, max_column - FRAME_THICKNESS),
                 random.choice('+*.:'),
                 random.randint(0, 20),
+            )
+        )
+
+    for _ in range(numbers_of_garbage):
+        coroutines.append(
+            fly_garbage(
+                canvas,
+                column=random.randint(1, max_column - 1),
+                # garbage_frame=random.choice(garbage_frames),
+                garbage_frame=random.choice(garbage_frames),
             )
         )
 
@@ -59,7 +76,7 @@ def draw(canvas):
         )
     )
 
-    coroutines.append(garbage_coroutine)
+    # coroutines.append(garbage_coroutine)
 
     while True:
         for coroutine in coroutines.copy():
