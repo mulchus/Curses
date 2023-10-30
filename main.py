@@ -18,8 +18,11 @@ UP_KEY_CODE = 259
 DOWN_KEY_CODE = 258
 BASE_DIR = Path(__file__).resolve().parent / 'Animations'
 
+global coroutines
+
 
 def draw(canvas):
+    global coroutines
     # canvas.border(0)
     canvas.nodelay(True)
     rows, columns = canvas.getmaxyx()
@@ -36,11 +39,8 @@ def draw(canvas):
     for garbage_filename in garbage_files:
         with open(Path(BASE_DIR, garbage_filename), 'r') as garbage_file:
             garbage_frames.append(garbage_file.read())
-    print(len(garbage_frames))
-    # garbage_coroutine = fly_garbage(canvas, column=10, garbage_frame=frame)
 
     numbers_of_stars = int(max_row * max_column / 40)
-    numbers_of_garbage = int(max_row * max_column / 400)
 
     coroutines = []
     for _ in range(numbers_of_stars):
@@ -51,16 +51,6 @@ def draw(canvas):
                 random.randint(FRAME_THICKNESS, max_column - FRAME_THICKNESS),
                 random.choice('+*.:'),
                 random.randint(0, 20),
-            )
-        )
-
-    for _ in range(numbers_of_garbage):
-        coroutines.append(
-            fly_garbage(
-                canvas,
-                column=random.randint(1, max_column - 1),
-                # garbage_frame=random.choice(garbage_frames),
-                garbage_frame=random.choice(garbage_frames),
             )
         )
 
@@ -76,7 +66,13 @@ def draw(canvas):
         )
     )
 
-    # coroutines.append(garbage_coroutine)
+    coroutines.append(
+        fill_orbit_with_garbage(
+            canvas,
+            max_column,
+            garbage_frames
+        )
+    )
 
     while True:
         for coroutine in coroutines.copy():
@@ -102,6 +98,20 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
         await asyncio.sleep(0)
         draw_frame(canvas, row, column, garbage_frame, negative=True)
         row += speed
+
+
+async def fill_orbit_with_garbage(canvas, max_column, garbage_frames):
+    global coroutines
+    while True:
+        coroutines.append(
+            fly_garbage(
+                canvas,
+                column=random.randint(1, max_column - 1),
+                garbage_frame=random.choice(garbage_frames),
+            )
+        )
+        for __ in range(10):
+            await asyncio.sleep(0)
 
 
 async def blink(canvas, row, column, symbol, offset_tics):
