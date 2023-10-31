@@ -6,6 +6,7 @@ import random
 from pathlib import Path
 from itertools import cycle
 from physics import update_speed
+from obstacles import Obstacle
 
 
 TIC_TIMEOUT = 0.1
@@ -20,6 +21,7 @@ DOWN_KEY_CODE = 258
 BASE_DIR = Path(__file__).resolve().parent / 'Animations'
 
 global coroutines
+global obstacles
 
 
 def draw(canvas):
@@ -102,18 +104,26 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
         await asyncio.sleep(0)
         draw_frame(canvas, row, column, garbage_frame, negative=True)
         row += speed
+        obstacles.show_obstacles(canvas, obstacles)
 
 
 async def fill_orbit_with_garbage(canvas, max_column, garbage_frames):
     global coroutines
+    global obstacles
+    obstacles = []
     while True:
+        column=random.randint(1, max_column - 1)
+        garbage_frame=random.choice(garbage_frames)
         coroutines.append(
             fly_garbage(
                 canvas,
-                column=random.randint(1, max_column - 1),
-                garbage_frame=random.choice(garbage_frames),
+                column=column,
+                garbage_frame=garbage_frame,
             )
         )
+        rows_size, columns_size = get_frame_size(garbage_frame)
+        obstacle = Obstacle(0, column, rows_size=1, columns_size=1, uid)
+        obstacles.append()
         await sleep(10)
 
 
@@ -235,6 +245,15 @@ def draw_frame(canvas, start_row, start_column, text, negative=False):
                 continue
             symbol = symbol if not negative else ' '
             canvas.addch(row, column, symbol)
+
+
+def get_frame_size(text):
+    """Calculate size of multiline text fragment, return pair — number of rows and colums."""
+
+    lines = text.splitlines()
+    rows = len(lines)
+    columns = max([len(line) for line in lines])
+    return rows, columns
 
 
 def read_controls(canvas):
