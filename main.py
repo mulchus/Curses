@@ -40,7 +40,7 @@ def draw(canvas):
         with open(Path(BASE_DIR, garbage_filename), 'r') as garbage_file:
             garbage_frames.append(garbage_file.read())
 
-    numbers_of_stars = int(max_row * max_column / 40)
+    numbers_of_stars = int(max_row * max_column / 100)
 
     coroutines = []
     for _ in range(numbers_of_stars):
@@ -84,6 +84,11 @@ def draw(canvas):
         time.sleep(TIC_TIMEOUT)
 
 
+async def sleep(duration):
+    for __ in range(duration):  # пауза в duration тактов
+        await asyncio.sleep(0)
+
+
 async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
     """Animate garbage, flying from top to bottom. Сolumn position will stay same, as specified on start."""
     rows_number, columns_number = canvas.getmaxyx()
@@ -110,26 +115,20 @@ async def fill_orbit_with_garbage(canvas, max_column, garbage_frames):
                 garbage_frame=random.choice(garbage_frames),
             )
         )
-        for __ in range(10):
-            await asyncio.sleep(0)
+        await sleep(10)
 
 
 async def blink(canvas, row, column, symbol, offset_tics):
     while True:
-        for _ in range(0, offset_tics):  # пауза в offset_tics тактов
-            await asyncio.sleep(0)
+        await sleep(offset_tics)    # пауза в offset_tics тактов
         canvas.addstr(row, column, symbol, curses.A_DIM)
-        for _ in range(0, 20):  # пауза в 20 тактов
-            await asyncio.sleep(0)
+        await sleep(20)
         canvas.addstr(row, column, symbol)
-        for _ in range(0, 3):  # пауза в 3 такта
-            await asyncio.sleep(0)
+        await sleep(3)
         canvas.addstr(row, column, symbol, curses.A_BOLD)
-        for _ in range(0, 5):  # пауза в 5 такта
-            await asyncio.sleep(0)
+        await sleep(5)
         canvas.addstr(row, column, symbol)
-        for _ in range(0, 3):  # пауза в 3 такта
-            await asyncio.sleep(0)
+        await sleep(3)
 
 
 async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_column, rocket_frames, coroutines):
