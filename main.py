@@ -8,6 +8,7 @@ from itertools import cycle
 from physics import update_speed
 from curses_tools import read_controls, draw_frame, get_frame_size
 from obstacles import Obstacle
+from explosion import explode
 
 
 TIC_TIMEOUT = 0.1
@@ -96,6 +97,7 @@ async def sleep(duration):
 
 
 async def fly_garbage(canvas, column, garbage_frame, speed=0.2):
+    global coroutines
     global obstacles
     global obstacles_in_last_collisions
     """Animate garbage, flying from top to bottom. Сolumn position will stay same, as specified on start."""
@@ -106,6 +108,13 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.2):
     while obstacle.row < rows_number:
         if obstacle in obstacles_in_last_collisions:
             obstacles_in_last_collisions.pop(0)
+            coroutines.append(
+                explode(
+                    canvas,
+                    obstacle.row + obstacle.rows_size / 2,
+                    obstacle.column + obstacle.columns_size / 2,
+                )
+            )
             return
         draw_frame(canvas, obstacle.row, obstacle.column, garbage_frame)
         draw_frame(canvas, *obstacle.dump_bounding_box())
