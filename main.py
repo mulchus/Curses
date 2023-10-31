@@ -5,6 +5,7 @@ import random
 
 from pathlib import Path
 from itertools import cycle
+from physics import update_speed
 
 
 TIC_TIMEOUT = 0.1
@@ -29,6 +30,7 @@ def draw(canvas):
     max_row, max_column = rows - FRAME_THICKNESS, columns - FRAME_THICKNESS
     rocket_row = int(max_row / 2)
     rocket_column = int(max_column / 2)
+    row_speed = column_speed = 0
     rocket_frames = []
     garbage_files = ('duck.txt', 'hubble.txt', 'lamp.txt', 'trash_large.txt', 'trash_small.txt', 'trash_xl.txt')
     garbage_frames = []
@@ -62,17 +64,19 @@ def draw(canvas):
             rocket_row,
             rocket_column,
             rocket_frames,
-            coroutines,
+            # coroutines,
+            row_speed,
+            column_speed,
         )
     )
 
-    coroutines.append(
-        fill_orbit_with_garbage(
-            canvas,
-            max_column,
-            garbage_frames
-        )
-    )
+    # coroutines.append(
+    #     fill_orbit_with_garbage(
+    #         canvas,
+    #         max_column,
+    #         garbage_frames,
+    #     )
+    # )
 
     while True:
         for coroutine in coroutines.copy():
@@ -126,22 +130,38 @@ async def blink(canvas, row, column, symbol, offset_tics):
         await sleep(3)
 
 
-async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_column, rocket_frames, coroutines):
-
-    def update_coordinates(rocket_row_, rocket_column_):
+async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_column, rocket_frames,
+                            row_speed, column_speed):
+    def update_coordinates(rocket_row_, rocket_column_, row_speed_, column_speed_):
         rows_direction, columns_direction, space_pressed_ = read_controls(canvas)
         if rows_direction < 0:
-            rocket_row_ = max(rocket_row_ + rows_direction, 1)
+            row_speed_, column_speed_ = update_speed(row_speed_, column_speed_, -1, 0)
         elif rows_direction > 0:
-            rocket_row_ = min(rocket_row_ + rows_direction, max_row - SHIP_HEIGHT)
+            row_speed_, column_speed_ = update_speed(row_speed_, column_speed_, 1, 0)
         elif columns_direction < 0:
-            rocket_column_ = max(rocket_column_ + columns_direction, 1)
+            row_speed_, column_speed_ = update_speed(row_speed_, column_speed_, 0, -1)
         elif columns_direction > 0:
-            rocket_column_ = min(rocket_column_ + columns_direction, max_column - SHIP_WIDTH)
-        return rocket_row_, rocket_column_, space_pressed_
+            row_speed_, column_speed_ = update_speed(row_speed_, column_speed_, 0, 1)
+
+        # row_speed_, column_speed_ = update_speed(row_speed_, column_speed_, rows_direction, columns_direction)
+
+        if row_speed_ < -0.5:
+            rocket_row_ = max(rocket_row_ + row_speed_, 1)
+        elif row_speed_ > 0.5:
+            rocket_row_ = min(rocket_row_ + row_speed_, max_row - SHIP_HEIGHT)
+        else:
+            row_speed_ = 0
+        if column_speed_ < -0.5:
+            rocket_column_ = max(rocket_column_ + column_speed_, 1)
+        elif column_speed_ > 0.5:
+            rocket_column_ = min(rocket_column_ + column_speed_, max_column - SHIP_WIDTH)
+        else:
+            column_speed_ = 0
+
+        return rocket_row_, rocket_column_, row_speed_, column_speed_, space_pressed_
 
     for rocket in cycle(rocket_frames):
-        rocket_row, rocket_column, space_pressed = update_coordinates(rocket_row, rocket_column)
+        rocket_row, rocket_column, row_speed, column_speed, space_pressed = update_coordinates(rocket_row, rocket_column, row_speed, column_speed)
 
         if space_pressed:
             fire_coroutine = fire(canvas, rocket_row, rocket_column + 2, -1, 0)
