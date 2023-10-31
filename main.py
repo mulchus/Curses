@@ -43,6 +43,7 @@ def draw(canvas):
 
     numbers_of_stars = int(max_row * max_column / 100)
 
+    obstacles = []
     coroutines = []
     for _ in range(numbers_of_stars):
         coroutines.append(
@@ -92,10 +93,12 @@ async def sleep(duration):
 
 
 async def fly_garbage(canvas, column, garbage_frame, speed=0.2):
+    global obstacles
     """Animate garbage, flying from top to bottom. Сolumn position will stay same, as specified on start."""
     rows_number, columns_number = canvas.getmaxyx()
     rows_size, columns_size = get_frame_size(garbage_frame)
-    obstacle = Obstacle(0, column, rows_size, columns_size)
+    obstacle = Obstacle(-10, column, rows_size, columns_size)
+    obstacles.append(obstacle)
     while obstacle.row < rows_number:
         draw_frame(canvas, obstacle.row, obstacle.column, garbage_frame)
         draw_frame(canvas, *obstacle.dump_bounding_box())
@@ -103,6 +106,10 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.2):
         draw_frame(canvas, obstacle.row, obstacle.column, garbage_frame, negative=True)
         draw_frame(canvas, *obstacle.dump_bounding_box(), negative=True)
         obstacle.row += speed
+    try:
+        obstacles.pop(0)
+    finally:
+        pass
 
 
 async def fill_orbit_with_garbage(canvas, max_column, garbage_frames):
