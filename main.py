@@ -5,6 +5,8 @@ import random
 
 from pathlib import Path
 from itertools import cycle
+
+import curses_tools
 from physics import update_speed
 from curses_tools import read_controls, draw_frame, get_frame_size
 from obstacles import Obstacle
@@ -13,8 +15,8 @@ from explosion import explode
 
 TIC_TIMEOUT = 0.1
 FRAME_THICKNESS = 1
-SHIP_HEIGHT = 9
-SHIP_WIDTH = 5
+ROCKET_HEIGHT = 9
+ROCKET_WIDTH = 5
 
 BASE_DIR = Path(__file__).resolve().parent / 'Animations'
 
@@ -117,10 +119,10 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.2):
             )
             return
         draw_frame(canvas, obstacle.row, obstacle.column, garbage_frame)
-        draw_frame(canvas, *obstacle.dump_bounding_box())
+        # draw_frame(canvas, *obstacle.dump_bounding_box())
         await asyncio.sleep(0)
         draw_frame(canvas, obstacle.row, obstacle.column, garbage_frame, negative=True)
-        draw_frame(canvas, *obstacle.dump_bounding_box(), negative=True)
+        # draw_frame(canvas, *obstacle.dump_bounding_box(), negative=True)
         obstacle.row += speed
     try:
         obstacles.pop(0)
@@ -156,6 +158,9 @@ async def blink(canvas, row, column, symbol, offset_tics):
 
 async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_column, rocket_frames,
                             row_speed, column_speed):
+    global obstacles
+    global coroutines
+
     def update_coordinates(rocket_row_, rocket_column_, row_speed_, column_speed_):
         rows_direction, columns_direction, space_pressed_ = read_controls(canvas)
         if rows_direction < 0:
@@ -168,15 +173,15 @@ async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_colu
             row_speed_, column_speed_ = update_speed(row_speed_, column_speed_, 0, 1)
 
         if row_speed_ < -0.5:
-            rocket_row_ = max(rocket_row_ + row_speed_, 1)
+            rocket_row_ = max(rocket_row_ + row_speed_, 0)
         elif row_speed_ > 0.5:
-            rocket_row_ = min(rocket_row_ + row_speed_, max_row - SHIP_HEIGHT)
+            rocket_row_ = min(rocket_row_ + row_speed_, max_row - ROCKET_HEIGHT + 3)
         else:
             row_speed_ = 0
         if column_speed_ < -0.5:
             rocket_column_ = max(rocket_column_ + column_speed_, 1)
         elif column_speed_ > 0.5:
-            rocket_column_ = min(rocket_column_ + column_speed_, max_column - SHIP_WIDTH)
+            rocket_column_ = min(rocket_column_ + column_speed_, max_column - ROCKET_WIDTH)
         else:
             column_speed_ = 0
 
@@ -185,6 +190,26 @@ async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_colu
     for rocket in cycle(rocket_frames):
         rocket_row, rocket_column, row_speed, column_speed, space_pressed =\
             update_coordinates(rocket_row, rocket_column, row_speed, column_speed)
+
+        for obstacle in obstacles:
+            if obstacle.has_collision(rocket_row, rocket_column, ROCKET_HEIGHT, ROCKET_WIDTH):
+                coroutines.append(
+                    explode(
+                        canvas,
+                        rocket_row + ROCKET_HEIGHT / 2,
+                        rocket_column + ROCKET_WIDTH / 2,
+                    )
+                )
+
+                title_rows, title_columns = get_frame_size(curses_tools.GAME_OVER_TITLE)
+                coroutines.append(
+                    show_gameover(
+                        canvas,
+                        max_row / 2 - title_rows / 2,
+                        max_column / 2 - title_columns / 2,
+                    )
+                )
+                return
 
         if space_pressed:
             fire_coroutine = fire(canvas, rocket_row, rocket_column + 2, -1, 0)
@@ -225,7 +250,7 @@ async def fire(canvas, fire_row, fire_column, rows_speed=-0.8, columns_speed=0):
     symbol = '-' if columns_speed else '|'
 
     rows, columns = canvas.getmaxyx()
-    # max_row, max_column = rows - 1, columns - 1
+    # max_row, max_column = rows - 1, columns - 1       # distance margin for border
 
     curses.beep()
 
@@ -241,6 +266,12 @@ async def fire(canvas, fire_row, fire_column, rows_speed=-0.8, columns_speed=0):
                 obstacles_in_last_collisions.append(obstacle)
                 obstacles = [new_obstacle for new_obstacle in obstacles if new_obstacle != obstacle]
                 return
+
+
+async def show_gameover(canvas, title_row, title_column):
+    while True:
+        draw_frame(canvas, title_row, title_column, curses_tools.GAME_OVER_TITLE)
+        await asyncio.sleep(0)
 
 
 if __name__ == '__main__':
