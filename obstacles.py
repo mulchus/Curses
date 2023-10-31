@@ -13,11 +13,11 @@ class Obstacle:
 
     def get_bounding_box_frame(self):
         # increment box size to compensate obstacle movement
-        rows, columns = self.rows_size + 1, self.columns_size + 1
+        rows, columns = self.rows_size - 1, self.columns_size + 1
         return '\n'.join(_get_bounding_box_lines(rows, columns))
 
     def get_bounding_box_corner_pos(self):
-        return self.row - 1, self.column - 1
+        return self.row, self.column - 1
 
     def dump_bounding_box(self):
         row, column = self.get_bounding_box_corner_pos()

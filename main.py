@@ -23,7 +23,7 @@ global obstacles
 
 def draw(canvas):
     global coroutines
-    # canvas.border(0)
+    global obstacles
     canvas.nodelay(True)
     rows, columns = canvas.getmaxyx()
     max_row, max_column = rows - FRAME_THICKNESS, columns - FRAME_THICKNESS
@@ -63,7 +63,6 @@ def draw(canvas):
             rocket_row,
             rocket_column,
             rocket_frames,
-            # coroutines,
             row_speed,
             column_speed,
         )
@@ -95,13 +94,15 @@ async def sleep(duration):
 async def fly_garbage(canvas, column, garbage_frame, speed=0.2):
     """Animate garbage, flying from top to bottom. Сolumn position will stay same, as specified on start."""
     rows_number, columns_number = canvas.getmaxyx()
-    row = 0
-    while row < rows_number:
-        draw_frame(canvas, row, column, garbage_frame)
+    rows_size, columns_size = get_frame_size(garbage_frame)
+    obstacle = Obstacle(0, column, rows_size, columns_size)
+    while obstacle.row < rows_number:
+        draw_frame(canvas, obstacle.row, obstacle.column, garbage_frame)
+        draw_frame(canvas, *obstacle.dump_bounding_box())
         await asyncio.sleep(0)
-        draw_frame(canvas, row, column, garbage_frame, negative=True)
-        row += speed
-
+        draw_frame(canvas, obstacle.row, obstacle.column, garbage_frame, negative=True)
+        draw_frame(canvas, *obstacle.dump_bounding_box(), negative=True)
+        obstacle.row += speed
 
 
 async def fill_orbit_with_garbage(canvas, max_column, garbage_frames):
@@ -142,8 +143,6 @@ async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_colu
             row_speed_, column_speed_ = update_speed(row_speed_, column_speed_, 0, -1)
         elif columns_direction > 0:
             row_speed_, column_speed_ = update_speed(row_speed_, column_speed_, 0, 1)
-
-        # row_speed_, column_speed_ = update_speed(row_speed_, column_speed_, rows_direction, columns_direction)
 
         if row_speed_ < -0.5:
             rocket_row_ = max(rocket_row_ + row_speed_, 1)
