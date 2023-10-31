@@ -19,11 +19,13 @@ BASE_DIR = Path(__file__).resolve().parent / 'Animations'
 
 global coroutines
 global obstacles
+global obstacles_in_last_collisions
 
 
 def draw(canvas):
     global coroutines
     global obstacles
+    global obstacles_in_last_collisions
     canvas.nodelay(True)
     rows, columns = canvas.getmaxyx()
     max_row, max_column = rows - FRAME_THICKNESS, columns - FRAME_THICKNESS
@@ -44,6 +46,7 @@ def draw(canvas):
     numbers_of_stars = int(max_row * max_column / 100)
 
     obstacles = []
+    obstacles_in_last_collisions = []
     coroutines = []
     for _ in range(numbers_of_stars):
         coroutines.append(
@@ -94,12 +97,16 @@ async def sleep(duration):
 
 async def fly_garbage(canvas, column, garbage_frame, speed=0.2):
     global obstacles
+    global obstacles_in_last_collisions
     """Animate garbage, flying from top to bottom. Сolumn position will stay same, as specified on start."""
     rows_number, columns_number = canvas.getmaxyx()
     rows_size, columns_size = get_frame_size(garbage_frame)
     obstacle = Obstacle(-10, column, rows_size, columns_size)
     obstacles.append(obstacle)
     while obstacle.row < rows_number:
+        if obstacle in obstacles_in_last_collisions:
+            obstacles_in_last_collisions.pop(0)
+            return
         draw_frame(canvas, obstacle.row, obstacle.column, garbage_frame)
         draw_frame(canvas, *obstacle.dump_bounding_box())
         await asyncio.sleep(0)
@@ -195,6 +202,7 @@ async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_colu
 async def fire(canvas, fire_row, fire_column, rows_speed=-0.8, columns_speed=0):
     """Display animation of gun shot, direction and speed can be specified."""
     global obstacles
+    global obstacles_in_last_collisions
 
     canvas.addstr(round(fire_row), round(fire_column), '*')
     await asyncio.sleep(0)
@@ -221,6 +229,8 @@ async def fire(canvas, fire_row, fire_column, rows_speed=-0.8, columns_speed=0):
 
         for obstacle in obstacles:
             if obstacle.has_collision(fire_row, fire_column):
+                obstacles_in_last_collisions.append(obstacle)
+                obstacles = [new_obstacle for new_obstacle in obstacles if new_obstacle != obstacle]
                 return
 
 
