@@ -167,7 +167,8 @@ async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_colu
         return rocket_row_, rocket_column_, row_speed_, column_speed_, space_pressed_
 
     for rocket in cycle(rocket_frames):
-        rocket_row, rocket_column, row_speed, column_speed, space_pressed = update_coordinates(rocket_row, rocket_column, row_speed, column_speed)
+        rocket_row, rocket_column, row_speed, column_speed, space_pressed =\
+            update_coordinates(rocket_row, rocket_column, row_speed, column_speed)
 
         if space_pressed:
             fire_coroutine = fire(canvas, rocket_row, rocket_column + 2, -1, 0)
@@ -191,31 +192,36 @@ async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_colu
         )
 
 
-async def fire(canvas, row, column, rows_speed=-0.3, columns_speed=0):
+async def fire(canvas, fire_row, fire_column, rows_speed=-0.8, columns_speed=0):
     """Display animation of gun shot, direction and speed can be specified."""
+    global obstacles
 
-    canvas.addstr(round(row), round(column), '*')
+    canvas.addstr(round(fire_row), round(fire_column), '*')
     await asyncio.sleep(0)
-    canvas.addstr(round(row), round(column), 'O')
+    canvas.addstr(round(fire_row), round(fire_column), 'O')
     await asyncio.sleep(0)
-    canvas.addstr(round(row), round(column), ' ')
+    canvas.addstr(round(fire_row), round(fire_column), ' ')
 
-    row += rows_speed
-    column += columns_speed
+    fire_row += rows_speed
+    fire_column += columns_speed
 
     symbol = '-' if columns_speed else '|'
 
     rows, columns = canvas.getmaxyx()
-    max_row, max_column = rows - 1, columns - 1
+    # max_row, max_column = rows - 1, columns - 1
 
     curses.beep()
 
-    while 1 < row < max_row and 1 < column < max_column:
-        canvas.addstr(round(row), round(column), symbol)
+    while 0 <= fire_row < rows and 0 <= fire_column < columns:
+        canvas.addstr(round(fire_row), round(fire_column), symbol)
         await asyncio.sleep(0)
-        canvas.addstr(round(row), round(column), ' ')
-        row += rows_speed
-        column += columns_speed
+        canvas.addstr(round(fire_row), round(fire_column), ' ')
+        fire_row += rows_speed
+        fire_column += columns_speed
+
+        for obstacle in obstacles:
+            if obstacle.has_collision(fire_row, fire_column):
+                return
 
 
 if __name__ == '__main__':
