@@ -19,6 +19,7 @@ TIC_TIMEOUT = 0.1
 FRAME_THICKNESS = 1
 ROCKET_HEIGHT = 9
 ROCKET_WIDTH = 5
+START_YEAR = 1957
 
 BASE_DIR = Path(__file__).resolve().parent / 'Animations'
 
@@ -33,6 +34,7 @@ def draw(canvas):
     global obstacles
     global obstacles_in_last_collisions
     global year
+    year = START_YEAR
     canvas.nodelay(True)
     rows, columns = canvas.getmaxyx()
     max_row, max_column = rows - FRAME_THICKNESS, columns - FRAME_THICKNESS
@@ -70,6 +72,7 @@ def draw(canvas):
         count_and_show_year(
             canvas,
             game_scenario.PHRASES,
+            rows
         )
     )
 
@@ -143,8 +146,6 @@ async def fill_orbit_with_garbage(canvas, max_column, garbage_frames):
     global coroutines
     global year
     while True:
-        garbage_pause = year - 1956
-        print(year, garbage_pause)
         if year >= 1961:
             coroutines.append(
                 fly_garbage(
@@ -228,7 +229,7 @@ async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_colu
                 return
 
         if space_pressed and year >= 2020:
-            fire_coroutine = fire(canvas, rocket_row, rocket_column + 2, -1, 0)
+            fire_coroutine = fire(canvas, rocket_row, rocket_column + 2, -1)
             coroutines.append(fire_coroutine)
 
         draw_frame(
@@ -249,7 +250,7 @@ async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_colu
         )
 
 
-async def fire(canvas, fire_row, fire_column, rows_speed=-0.8, columns_speed=0):
+async def fire(canvas, fire_row, fire_column, rows_speed=-0.8):
     """Display animation of gun shot, direction and speed can be specified."""
     global obstacles
     global obstacles_in_last_collisions
@@ -261,13 +262,8 @@ async def fire(canvas, fire_row, fire_column, rows_speed=-0.8, columns_speed=0):
     canvas.addstr(round(fire_row), round(fire_column), ' ')
 
     fire_row += rows_speed
-    fire_column += columns_speed
-
-    symbol = '-' if columns_speed else '|'
-
+    symbol = '|'
     rows, columns = canvas.getmaxyx()
-    # max_row, max_column = rows - 1, columns - 1       # distance margin for border
-
     curses.beep()
 
     while 0 <= fire_row < rows and 0 <= fire_column < columns:
@@ -275,7 +271,6 @@ async def fire(canvas, fire_row, fire_column, rows_speed=-0.8, columns_speed=0):
         await asyncio.sleep(0)
         canvas.addstr(round(fire_row), round(fire_column), ' ')
         fire_row += rows_speed
-        fire_column += columns_speed
 
         for obstacle in obstacles:
             if obstacle.has_collision(fire_row, fire_column):
@@ -290,15 +285,26 @@ async def show_gameover(canvas, title_row, title_column):
         await asyncio.sleep(0)
 
 
-async def count_and_show_year(canvas, phrases):
+async def count_and_show_year(canvas, phrases, rows):
+    def draw_year_and_message(year_, phrase_):
+        small_window.addstr(1, 2, f'{year_}: {phrase_}', curses.color_pair(0))
+        small_window.box()
+        small_window.refresh()
+
     global year
-    # while True:
-    for year_ in phrases:
-        year = year_
-        print(year)
-        draw_frame(canvas, 1, 1, f'{year}: {phrases[year]}')
-        # draw_frame(canvas.derwin(1, 5, 2, 2), 0, 0, f'{year}: {phrases[year]}')
-        await sleep(50)        # надо как то подстроить время: год = 1,5 сек
+    small_window = canvas.derwin(3, 50, rows-3, 0)
+    years = list(phrases)
+    for year, phrase in phrases.items():
+        try:
+            next_year = years[years.index(year) + 1]
+        except (ValueError, IndexError):
+            next_year = year
+        for __ in range(5 * (next_year - year)):
+            draw_year_and_message(year, phrase)
+            await sleep(1)        # надо как то подстроить время: год = 1,5 сек
+    while True:
+        draw_year_and_message(year, phrase)
+        await sleep(1)        # надо как то подстроить время: год = 1,5 сек
 
 
 if __name__ == '__main__':
