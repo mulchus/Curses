@@ -69,7 +69,7 @@ def draw(canvas):
         )
 
     coroutines.append(
-        count_and_show_year(
+        show_year(
             canvas,
             game_scenario.PHRASES,
             rows
@@ -180,27 +180,15 @@ async def animate_spaceship(canvas, max_row, max_column, rocket_row, rocket_colu
 
     def update_coordinates(rocket_row_, rocket_column_, row_speed_, column_speed_):
         rows_direction, columns_direction, space_pressed_ = read_controls(canvas)
-        if rows_direction < 0:
-            row_speed_, column_speed_ = update_speed(row_speed_, column_speed_, -1, 0)
-        elif rows_direction > 0:
-            row_speed_, column_speed_ = update_speed(row_speed_, column_speed_, 1, 0)
-        elif columns_direction < 0:
-            row_speed_, column_speed_ = update_speed(row_speed_, column_speed_, 0, -1)
-        elif columns_direction > 0:
-            row_speed_, column_speed_ = update_speed(row_speed_, column_speed_, 0, 1)
+        row_speed_, column_speed_ = update_speed(row_speed_, column_speed_, rows_direction, columns_direction)
 
-        if row_speed_ < -0.5:
-            rocket_row_ = max(rocket_row_ + row_speed_, 0)
-        elif row_speed_ > 0.5:
-            rocket_row_ = min(rocket_row_ + row_speed_, max_row - ROCKET_HEIGHT + 3)
-        else:
-            row_speed_ = 0
-        if column_speed_ < -0.5:
-            rocket_column_ = max(rocket_column_ + column_speed_, 1)
-        elif column_speed_ > 0.5:
-            rocket_column_ = min(rocket_column_ + column_speed_, max_column - ROCKET_WIDTH)
-        else:
-            column_speed_ = 0
+        rocket_row_ += row_speed_
+        rocket_row_ = max(rocket_row_, 0)
+        rocket_row_ = min(rocket_row_, max_row - ROCKET_HEIGHT + 3)
+
+        rocket_column_ += column_speed_
+        rocket_column_ = max(rocket_column_, 1)
+        rocket_column_ = min(rocket_column_, max_column - ROCKET_WIDTH)
 
         return rocket_row_, rocket_column_, row_speed_, column_speed_, space_pressed_
 
@@ -285,14 +273,16 @@ async def show_gameover(canvas, title_row, title_column):
         await asyncio.sleep(0)
 
 
-async def count_and_show_year(canvas, phrases, rows):
-    def draw_year_and_message(year_, phrase_):
-        small_window.addstr(1, 2, f'{year_}: {phrase_}', curses.color_pair(0))
-        small_window.box()
-        small_window.refresh()
+def draw_year_and_message(canvas, year_, phrase_, rows):
+    small_window = canvas.derwin(3, 50, rows - 3, 0)
+    small_window.addstr(1, 2, f'{year_}: {phrase_}', curses.color_pair(0))
+    small_window.box()
+    small_window.refresh()
 
+
+async def show_year(canvas, phrases, rows):
     global year
-    small_window = canvas.derwin(3, 50, rows-3, 0)
+
     years = list(phrases)
     for year, phrase in phrases.items():
         try:
@@ -300,10 +290,10 @@ async def count_and_show_year(canvas, phrases, rows):
         except (ValueError, IndexError):
             next_year = year
         for __ in range(5 * (next_year - year)):
-            draw_year_and_message(year, phrase)
+            draw_year_and_message(canvas, year, phrase, rows)
             await sleep(1)        # надо как то подстроить время: год = 1,5 сек
     while True:
-        draw_year_and_message(year, phrase)
+        draw_year_and_message(canvas, year, phrase, rows)
         await sleep(1)        # надо как то подстроить время: год = 1,5 сек
 
 
