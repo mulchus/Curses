@@ -36,6 +36,10 @@ def draw(canvas):
     global year
     year = START_YEAR
     canvas.nodelay(True)
+    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)
+    curses.init_pair(2, curses.COLOR_RED, curses.COLOR_GREEN)
+    curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_RED)
+    curses.init_pair(4, curses.COLOR_RED, curses.COLOR_BLACK)
     rows, columns = canvas.getmaxyx()
     max_row, max_column = rows - FRAME_THICKNESS, columns - FRAME_THICKNESS
     rocket_row = int(max_row / 2)
@@ -269,31 +273,32 @@ async def fire(canvas, fire_row, fire_column, rows_speed=-0.8):
 
 async def show_gameover(canvas, title_row, title_column):
     while True:
-        draw_frame(canvas, title_row, title_column, curses_tools.GAME_OVER_TITLE)
+        draw_frame(canvas, title_row, title_column, curses_tools.GAME_OVER_TITLE, 0, 4)
         await asyncio.sleep(0)
 
 
-def draw_year_and_message(canvas, year_, phrase_, rows):
+def draw_year_and_message(canvas, year_, phrase_, rows, color_pair):
     small_window = canvas.derwin(3, 50, rows - 3, 0)
-    small_window.addstr(1, 2, f'{year_}: {phrase_}', curses.color_pair(0))
+    small_window.addstr(1, 2, f'{year_}: {phrase_}', curses.color_pair(color_pair) | curses.A_BOLD)
     small_window.box()
     small_window.refresh()
 
 
 async def show_year(canvas, phrases, rows):
     global year
-
     years = list(phrases)
+    color_pair = 2
     for year, phrase in phrases.items():
         try:
             next_year = years[years.index(year) + 1]
         except (ValueError, IndexError):
             next_year = year
         for __ in range(5 * (next_year - year)):
-            draw_year_and_message(canvas, year, phrase, rows)
+            draw_year_and_message(canvas, year, phrase, rows, color_pair)
             await sleep(1)        # надо как то подстроить время: год = 1,5 сек
     while True:
-        draw_year_and_message(canvas, year, phrase, rows)
+        color_pair = 3
+        draw_year_and_message(canvas, year, phrase, rows, color_pair)
         await sleep(1)        # надо как то подстроить время: год = 1,5 сек
 
 
